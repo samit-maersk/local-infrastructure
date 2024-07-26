@@ -62,6 +62,9 @@ services:
       CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: 1
       CONFLUENT_METRICS_TOPIC_REPLICATION: 1
       PORT: 9021
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.control-center.rule=Host(`control-center.localhost`)"
 
   mongodb:
     image: 'mongo:latest'
@@ -109,7 +112,7 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.grafana.rule=Path(`/grafana`) && Host(`${HOST_NAME:-localhost:8080}`)"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.localhost`)"
 
   loki:
     image: docker.io/grafana/loki:2.9.7
@@ -181,14 +184,26 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - alloy-data:/data-alloy
     restart: unless-stopped
-  # reverse-proxy:
-  #   image: traefik:v3.1
-  #   command: --api.insecure=true --providers.docker
-  #   ports:
-  #     - "80:80"
-  #     - "8080:8080"
-  #   volumes:
-  #     - /var/run/docker.sock:/var/run/docker.sock
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    restart: unless-stopped
+    volumes:
+      - ./html:/usr/share/nginx/html
+    # ports:
+    #   - "8083:80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nginx.rule=Host(`nginx.localhost`)"
+  
+  reverse-proxy:
+    image: traefik:v3.1
+    command: --api.insecure=true --providers.docker
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:
   alloy-data: { }
